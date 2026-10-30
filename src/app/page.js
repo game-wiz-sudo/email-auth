@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Mail,
   LockKeyhole,
+  KeyRound,
   UserRound,
   ShieldCheck,
   LayoutDashboard,
@@ -66,13 +67,15 @@ function Field({
           autoComplete={
             name === "password"
               ? "current-password"
+              : name === "newPassword" || name === "confirmPassword"
+              ? "new-password"
               : name === "email"
               ? "email"
               : "name"
           }
         />
 
-        {name === "password" && (
+        {["password", "newPassword", "confirmPassword"].includes(name) && (
           <button
             type="button"
             className="password-toggle"
@@ -119,6 +122,8 @@ export default function Home() {
   const [screen, setScreen] = useState("login");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
@@ -126,7 +131,9 @@ export default function Home() {
     fullName: "",
     email: "",
     password: "",
-    code: ""
+    code: "",
+    newPassword: "",
+    confirmPassword: ""
   });
 
   const [user, setUser] = useState(null);
@@ -259,6 +266,101 @@ export default function Home() {
       notify(result.message, "success");
       setScreen("verify-login");
 
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function requestPasswordReset(e) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const result = await requestAPI(
+        "/api/auth/forgot-password",
+        { email: form.email }
+      );
+
+      notify(
+        result.message || "If an account exists, a reset code has been sent.",
+        "success"
+      );
+      setForm((currentForm) => ({
+        ...currentForm,
+        code: "",
+        newPassword: "",
+        confirmPassword: ""
+      }));
+      setScreen("reset-password");
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resetPassword(e) {
+    e.preventDefault();
+
+    if (form.newPassword.length < 8) {
+      notify("Your new password must be at least 8 characters long.");
+      return;
+    }
+
+    if (form.newPassword !== form.confirmPassword) {
+      notify("Your new passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const result = await requestAPI(
+        "/api/auth/reset-password",
+        {
+          email: form.email,
+          code: form.code,
+          newPassword: form.newPassword
+        }
+      );
+
+      setForm((currentForm) => ({
+        ...currentForm,
+        password: "",
+        code: "",
+        newPassword: "",
+        confirmPassword: ""
+      }));
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+      setScreen("login");
+      notify(result.message || "Password reset successful. Please sign in.", "success");
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendPasswordResetCode() {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const result = await requestAPI(
+        "/api/auth/forgot-password",
+        { email: form.email }
+      );
+
+      setForm((currentForm) => ({ ...currentForm, code: "" }));
+      notify(
+        result.message || "If an account exists, a new reset code has been sent.",
+        "success"
+      );
     } catch (error) {
       notify(error.message);
     } finally {
@@ -437,6 +539,15 @@ export default function Home() {
                       icon={<LockKeyhole size={18} />}
                     />
 
+                    <div className="forgot-password-row">
+                      <button
+                        type="button"
+                        onClick={() => changeScreen("forgot-password")}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+
                     <Button loading={loading}>Continue securely</Button>
 
                   </form>
@@ -446,6 +557,133 @@ export default function Home() {
                     <button onClick={() => changeScreen("register")}>
                       Create account
                     </button>
+                  </div>
+                </>
+              )}
+
+              {screen === "forgot-password" && (
+                <>
+                  <div className="otp-illustration"><KeyRound size={32} /></div>
+
+                  <div className="form-heading">
+                    <div className="step-label">ACCOUNT RECOVERY</div>
+                    <h2>Forgot your password?</h2>
+                    <p>
+                      Enter the email address linked to your AUTHFLOW account.
+                      If an account exists, we'll send you a six-digit reset code.
+                    </p>
+                  </div>
+
+                  <Alert message={message} messageType={messageType} />
+
+                  <form onSubmit={requestPasswordReset}>
+                    <Field
+                      label="Email address"
+                      name="email"
+                      value={form.email}
+                      onChange={updateField}
+                      type="email"
+                      placeholder="name@example.com"
+                      icon={<Mail size={18} />}
+                    />
+
+                    <Button loading={loading}>Send reset code</Button>
+                  </form>
+
+                  <div className="form-switch">
+                    Remember your password?
+                    <button type="button" onClick={() => changeScreen("login")}>
+                      Back to sign in
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {screen === "reset-password" && (
+                <>
+                  <div className="otp-illustration"><ShieldCheck size={34} /></div>
+
+                  <div className="form-heading">
+                    <div className="step-label">PASSWORD RECOVERY</div>
+                    <h2>Reset your password</h2>
+                    <p>
+                      Enter the six-digit code sent to <strong>{form.email}</strong>,
+                      then choose a new password.
+                    </p>
+                  </div>
+
+                  <Alert message={message} messageType={messageType} />
+
+                  <form onSubmit={resetPassword}>
+                    <div className="field-group">
+                      <label htmlFor="reset-code">Six-digit reset code</label>
+                      <input
+                        id="reset-code"
+                        className="otp-input"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        pattern="[0-9]{6}"
+                        name="code"
+                        value={form.code}
+                        onChange={(e) =>
+                          setForm((currentForm) => ({
+                            ...currentForm,
+                            code: e.target.value.replace(/\D/g, "")
+                          }))
+                        }
+                        placeholder="000000"
+                        required
+                      />
+                    </div>
+
+                    <Field
+                      label="New password"
+                      name="newPassword"
+                      value={form.newPassword}
+                      onChange={updateField}
+                      showPassword={showNewPassword}
+                      onTogglePassword={() => setShowNewPassword((current) => !current)}
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="At least 8 characters"
+                      icon={<LockKeyhole size={18} />}
+                    />
+
+                    <Field
+                      label="Confirm new password"
+                      name="confirmPassword"
+                      value={form.confirmPassword}
+                      onChange={updateField}
+                      showPassword={showConfirmPassword}
+                      onTogglePassword={() => setShowConfirmPassword((current) => !current)}
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Enter your new password again"
+                      icon={<LockKeyhole size={18} />}
+                    />
+
+                    <Button loading={loading}>Reset password</Button>
+                  </form>
+
+                  <div className="reset-actions">
+                    <button
+                      type="button"
+                      onClick={resendPasswordResetCode}
+                      disabled={loading}
+                    >
+                      Resend code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => changeScreen("forgot-password")}
+                      disabled={loading}
+                    >
+                      Change email
+                    </button>
+                  </div>
+
+                  <div className="otp-expiry">
+                    Your reset code expires after 10 minutes.
                   </div>
                 </>
               )}

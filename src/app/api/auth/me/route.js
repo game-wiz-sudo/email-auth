@@ -6,7 +6,6 @@ export async function GET() {
   let client;
 
   try {
-    // Retrieve authentication cookie
     const cookieStore = await cookies();
     const token = cookieStore.get("auth_session")?.value;
 
@@ -17,17 +16,23 @@ export async function GET() {
       }, { status: 401 });
     }
 
-    // Verify session token
     const session = await verifySession(token);
 
-    if (!session || !session.userId) {
+    if (!session || !session.userId || session.sessionVersion === undefined) {
+      cookieStore.set("auth_session", "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0
+      });
+
       return Response.json({
         success: false,
         message: "Your session is invalid or expired."
       }, { status: 401 });
     }
 
-    // Retrieve fresh user information from database
     client = await pool.connect();
 
     const result = await client.query(
@@ -37,13 +42,14 @@ export async function GET() {
         email,
         email_verified,
         created_at,
-        last_login_at
+        last_login_at,
+        session_version
        FROM users
        WHERE id = $1`,
       [session.userId]
     );
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       return Response.json({
         success: false,
         message: "User account not found."
@@ -51,6 +57,21 @@ export async function GET() {
     }
 
     const user = result.rows[0];
+
+    if (Number(session.sessionVersion) !== Number(user.session_version)) {
+      cookieStore.set("auth_session", "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0
+      });
+
+      return Response.json({
+        success: false,
+        message: "Your session is no longer valid. Please sign in again."
+      }, { status: 401 });
+    }
 
     if (!user.email_verified) {
       return Response.json({
@@ -71,15 +92,12 @@ export async function GET() {
         lastLoginAt: user.last_login_at
       }
     });
-
   } catch (error) {
     console.error("Authentication check error:", error);
-
     return Response.json({
       success: false,
       message: "Unable to verify your authentication."
     }, { status: 500 });
-
   } finally {
     client?.release();
   }

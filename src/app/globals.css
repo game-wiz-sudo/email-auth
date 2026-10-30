@@ -946,3 +946,45 @@ button {
   display: grid;
   place-items: center;
 }
+
+/* AUTHFLOW FORGOT PASSWORD + RESET PASSWORD */
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -7px 0 14px;
+}
+
+.forgot-password-row button,
+.reset-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.forgot-password-row button:hover,
+.reset-actions button:hover {
+  color: #6ee7b7;
+  text-decoration: underline;
+}
+
+.reset-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.reset-actions button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+@media (max-width: 400px) {
+  .reset-actions button {
+    font-size: 10px;
+  }
+}

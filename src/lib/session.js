@@ -12,7 +12,8 @@ export async function createSession(user) {
   return await new SignJWT({
     userId: user.id,
     email: user.email,
-    fullName: user.full_name
+    fullName: user.full_name,
+    sessionVersion: Number(user.session_version ?? 0)
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -28,3 +29,4 @@ export async function verifySession(token) {
     return null;
   }
 }
+

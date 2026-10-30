@@ -7,7 +7,6 @@ import {
   UserRound,
   ShieldCheck,
   LayoutDashboard,
-  Settings,
   LogOut,
   Eye,
   EyeOff,
@@ -15,10 +14,7 @@ import {
   CheckCircle2,
   Sparkles,
   Shield,
-  Clock,
   ChevronRight,
-  CircleCheck,
-  KeyRound
 } from "lucide-react";
 
 const quotes = [
@@ -28,6 +24,96 @@ const quotes = [
   "Believe in progress, not perfection.",
   "Stay focused. Stay consistent. Keep building."
 ];
+
+
+function Brand() {
+  return (
+    <div className="brand">
+      <div className="brand-icon">
+        <ShieldCheck size={22} strokeWidth={2} />
+      </div>
+      <span>AUTH<span className="brand-highlight">FLOW</span></span>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  icon,
+  showPassword = false,
+  onTogglePassword
+}) {
+  return (
+    <div className="field-group">
+      <label htmlFor={name}>{label}</label>
+
+      <div className="input-wrapper">
+        <span className="input-icon">{icon}</span>
+
+        <input
+          id={name}
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required
+          autoComplete={
+            name === "password"
+              ? "current-password"
+              : name === "email"
+              ? "email"
+              : "name"
+          }
+        />
+
+        {name === "password" && (
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={onTogglePassword}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? <><EyeOff size={16} /> Hide</> : <><Eye size={16} /> Show</>}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Alert({ message, messageType }) {
+  if (!message) return null;
+
+  return (
+    <div className={`alert ${messageType}`} role="status" aria-live="polite">
+      <span>
+        {messageType === "success"
+          ? <CheckCircle2 size={17} />
+          : <Shield size={17} />}
+      </span>
+      {message}
+    </div>
+  );
+}
+
+function Button({ children, loading }) {
+  return (
+    <button
+      className="primary-button"
+      type="submit"
+      disabled={loading}
+    >
+      {loading ? <span className="loader" /> : children}
+      {!loading && <ArrowRight size={19} />}
+    </button>
+  );
+}
 
 export default function Home() {
   const [screen, setScreen] = useState("login");
@@ -53,10 +139,11 @@ export default function Home() {
   }
 
   function updateField(e) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]: value
+    }));
   }
 
   async function requestAPI(url, data, method = "POST") {
@@ -234,87 +321,6 @@ export default function Home() {
     setScreen(nextScreen);
   }
 
-  function Brand() {
-    return (
-      <div className="brand">
-        <div className="brand-icon"><ShieldCheck size={22} strokeWidth={2} /></div>
-        <span>AUTH<span className="brand-highlight">FLOW</span></span>
-      </div>
-    );
-  }
-
-  function Field({
-    label,
-    name,
-    type = "text",
-    placeholder,
-    icon
-  }) {
-    return (
-      <div className="field-group">
-        <label>{label}</label>
-
-        <div className="input-wrapper">
-          <span className="input-icon">{icon}</span>
-
-          <input
-            type={type}
-            name={name}
-            value={form[name]}
-            onChange={updateField}
-            placeholder={placeholder}
-            required
-            autoComplete={
-              name === "password"
-                ? "current-password"
-                : name === "email"
-                ? "email"
-                : "off"
-            }
-          />
-
-          {name === "password" && (
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <><EyeOff size={16} /> Hide</> : <><Eye size={16} /> Show</>}
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function Alert() {
-    if (!message) return null;
-
-    return (
-      <div className={`alert ${messageType}`}>
-        <span>{messageType === "success" ? <CheckCircle2 size={17} /> : <Shield size={17} />}</span>
-        {message}
-      </div>
-    );
-  }
-
-  function Button({ children }) {
-    return (
-      <button
-        className="primary-button"
-        type="submit"
-        disabled={loading}
-      >
-        {loading ? (
-          <span className="loader"></span>
-        ) : (
-          children
-        )}
-        {!loading && <ArrowRight size={19} />}
-      </button>
-    );
-  }
-
   return (
     <main className="app-shell">
 
@@ -405,13 +411,15 @@ export default function Home() {
                     <p>Enter your details to continue.</p>
                   </div>
 
-                  <Alert />
+                  <Alert message={message} messageType={messageType} />
 
                   <form onSubmit={login}>
 
                     <Field
                       label="Email address"
                       name="email"
+                      value={form.email}
+                      onChange={updateField}
                       type="email"
                       placeholder="name@example.com"
                       icon={<Mail size={18} />}
@@ -420,12 +428,16 @@ export default function Home() {
                     <Field
                       label="Password"
                       name="password"
+                      value={form.password}
+                      onChange={updateField}
+                      showPassword={showPassword}
+                      onTogglePassword={() => setShowPassword((current) => !current)}
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       icon={<LockKeyhole size={18} />}
                     />
 
-                    <Button>Continue securely</Button>
+                    <Button loading={loading}>Continue securely</Button>
 
                   </form>
 
@@ -446,13 +458,15 @@ export default function Home() {
                     <p>Join us and experience smarter security.</p>
                   </div>
 
-                  <Alert />
+                  <Alert message={message} messageType={messageType} />
 
                   <form onSubmit={register}>
 
                     <Field
                       label="Full name"
                       name="fullName"
+                      value={form.fullName}
+                      onChange={updateField}
                       placeholder="Your full name"
                       icon={<UserRound size={18} />}
                     />
@@ -460,6 +474,8 @@ export default function Home() {
                     <Field
                       label="Email address"
                       name="email"
+                      value={form.email}
+                      onChange={updateField}
                       type="email"
                       placeholder="name@example.com"
                       icon={<Mail size={18} />}
@@ -468,12 +484,16 @@ export default function Home() {
                     <Field
                       label="Create password"
                       name="password"
+                      value={form.password}
+                      onChange={updateField}
+                      showPassword={showPassword}
+                      onTogglePassword={() => setShowPassword((current) => !current)}
                       type={showPassword ? "text" : "password"}
                       placeholder="Minimum 8 characters"
                       icon={<LockKeyhole size={18} />}
                     />
 
-                    <Button>Create account</Button>
+                    <Button loading={loading}>Create account</Button>
 
                   </form>
 
@@ -508,7 +528,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <Alert />
+                  <Alert message={message} messageType={messageType} />
 
                   <form
                     onSubmit={
@@ -530,17 +550,17 @@ export default function Home() {
                         name="code"
                         value={form.code}
                         onChange={(e) =>
-                          setForm({
-                            ...form,
+                          setForm((currentForm) => ({
+                            ...currentForm,
                             code: e.target.value.replace(/\D/g, "")
-                          })
+                          }))
                         }
                         placeholder="000000"
                         required
                       />
                     </div>
 
-                    <Button>Verify and continue</Button>
+                    <Button loading={loading}>Verify and continue</Button>
 
                   </form>
 
@@ -641,7 +661,7 @@ export default function Home() {
               <div className="welcome-symbol"><Sparkles size={38} /></div>
             </div>
 
-            <Alert />
+            <Alert message={message} messageType={messageType} />
 
             <div className="dashboard-grid">
 
